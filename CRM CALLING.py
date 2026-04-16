@@ -244,10 +244,11 @@ df = df[
 ]
 
 # -------------------------
-# DATE CONVERSION
+# DATE PARSING (IMPORTANT FIX)
 # -------------------------
-df["CALLING AFTER +10 DAYS"] = pd.to_datetime(df["CALLING AFTER +10 DAYS"], errors='coerce')
-df["CALLING AFTER +20 DAYS"] = pd.to_datetime(df["CALLING AFTER +20 DAYS"], errors='coerce')
+df["DUE DATE"] = pd.to_datetime(df["DUE DATE"], format="%d-%m-%Y", errors='coerce')
+df["CALLING AFTER +10 DAYS"] = pd.to_datetime(df["CALLING AFTER +10 DAYS"], format="%d-%m-%Y", errors='coerce')
+df["CALLING AFTER +20 DAYS"] = pd.to_datetime(df["CALLING AFTER +20 DAYS"], format="%d-%m-%Y", errors='coerce')
 
 today = pd.to_datetime("today").normalize()
 
@@ -304,18 +305,6 @@ if bill_filter:
     df = df[df["BILL NUMBER"] == bill_filter]
 
 # -------------------------
-# SESSION STATE
-# -------------------------
-if "done_rows" not in st.session_state:
-    st.session_state.done_rows = set()
-
-# -------------------------
-# EXISTING DATA (DUPLICATE CHECK)
-# -------------------------
-existing_data = store.get_all_values()
-existing_bills = [row[4] for row in existing_data if len(row) > 4]
-
-# -------------------------
 # DISPLAY DATA
 # -------------------------
 for i, row in df.iterrows():
@@ -345,7 +334,7 @@ for i, row in df.iterrows():
         st.write(f"**PARTY:** {row['PARTY NAME']}")
         st.write(f"**AGENT:** {row['AGENT NAME']}")
         st.write(f"**AMOUNT:** {row['OUTSTANDING AMOUNT']}")
-        st.write(f"**DUE DATE:** {format_date(pd.to_datetime(row['DUE DATE'], errors='coerce'))}")
+        st.write(f"**DUE DATE:** {format_date(row['DUE DATE'])}")
         st.write(f"**BILL NO:** {row['BILL NUMBER']}")
 
         # CALL DATES
@@ -372,36 +361,27 @@ for i, row in df.iterrows():
         remark = st.text_input("REMARK", key=f"remark_{i}")
 
     # -------------------------
-    # BUTTON ACTION
+    # ALWAYS SHOW BUTTON
     # -------------------------
     with col3:
+        if st.button("CALL DONE", key=f"btn_{i}"):
 
-        if row["BILL NUMBER"] in existing_bills or i in st.session_state.done_rows:
-            st.success("✔ DONE")
-        else:
-            if st.button("CALL DONE", key=f"btn_{i}"):
+            timestamp = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
-                if row["BILL NUMBER"] in existing_bills:
-                    st.warning("Already stored!")
-                else:
-                    timestamp = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+            new_row = [
+                safe_value(row["PARTY NAME"]),
+                safe_value(row["AGENT NAME"]),
+                safe_value(row["OUTSTANDING AMOUNT"]),
+                format_date(row["DUE DATE"]),
+                safe_value(row["BILL NUMBER"]),
+                format_date(row["CALLING AFTER +10 DAYS"]),
+                format_date(row["CALLING AFTER +20 DAYS"]),
+                timestamp,
+                safe_value(remark)
+            ]
 
-                    new_row = [
-                        safe_value(row["PARTY NAME"]),
-                        safe_value(row["AGENT NAME"]),
-                        safe_value(row["OUTSTANDING AMOUNT"]),
-                        format_date(pd.to_datetime(row["DUE DATE"], errors='coerce')),
-                        safe_value(row["BILL NUMBER"]),
-                        format_date(row["CALLING AFTER +10 DAYS"]),
-                        format_date(row["CALLING AFTER +20 DAYS"]),
-                        timestamp,
-                        safe_value(remark)
-                    ]
+            store.append_row(new_row)
 
-                    store.append_row(new_row)
-
-                    st.session_state.done_rows.add(i)
-                    st.success("Stored Successfully ✅")
+            st.success("Stored Successfully ✅")
 
     st.markdown("</div>", unsafe_allow_html=True)
-
