@@ -1,5 +1,5 @@
 
-# # //-----------------------------------//------------------------------------//------------------
+# //-------------------------------------------------##-----------------------------------------//
 
 # import streamlit as st
 # import pandas as pd
@@ -47,10 +47,11 @@
 # ]
 
 # # -------------------------
-# # DATE CONVERSION
+# # DATE PARSING (IMPORTANT FIX)
 # # -------------------------
-# df["CALLING AFTER +10 DAYS"] = pd.to_datetime(df["CALLING AFTER +10 DAYS"], errors='coerce')
-# df["CALLING AFTER +20 DAYS"] = pd.to_datetime(df["CALLING AFTER +20 DAYS"], errors='coerce')
+# df["DUE DATE"] = pd.to_datetime(df["DUE DATE"], format="%d-%m-%Y", errors='coerce')
+# df["CALLING AFTER +10 DAYS"] = pd.to_datetime(df["CALLING AFTER +10 DAYS"], format="%d-%m-%Y", errors='coerce')
+# df["CALLING AFTER +20 DAYS"] = pd.to_datetime(df["CALLING AFTER +20 DAYS"], format="%d-%m-%Y", errors='coerce')
 
 # today = pd.to_datetime("today").normalize()
 
@@ -66,7 +67,7 @@
 #     if pd.isna(val):
 #         return ""
 #     if isinstance(val, pd.Timestamp):
-#         return val.strftime("%d-%b-%Y")   # dd-mmm-yyyy
+#         return val.strftime("%d-%b-%Y")
 #     return str(val)
 
 # # -------------------------
@@ -107,18 +108,6 @@
 #     df = df[df["BILL NUMBER"] == bill_filter]
 
 # # -------------------------
-# # SESSION STATE
-# # -------------------------
-# if "done_rows" not in st.session_state:
-#     st.session_state.done_rows = set()
-
-# # -------------------------
-# # EXISTING DATA (DUPLICATE CHECK)
-# # -------------------------
-# existing_data = store.get_all_values()
-# existing_bills = [row[4] for row in existing_data if len(row) > 4]
-
-# # -------------------------
 # # DISPLAY DATA
 # # -------------------------
 # for i, row in df.iterrows():
@@ -129,7 +118,7 @@
 #     color = ""
 
 #     if pd.notna(row["CALLING AFTER +10 DAYS"]) and row["CALLING AFTER +10 DAYS"] >= today:
-#         color = "#f4c2c2"  # light magenta
+#         color = "#f4c2c2"
 
 #     if pd.notna(row["CALLING AFTER +20 DAYS"]) and row["CALLING AFTER +20 DAYS"] >= today:
 #         color = "#f4c2c2"
@@ -148,8 +137,25 @@
 #         st.write(f"**PARTY:** {row['PARTY NAME']}")
 #         st.write(f"**AGENT:** {row['AGENT NAME']}")
 #         st.write(f"**AMOUNT:** {row['OUTSTANDING AMOUNT']}")
-#         st.write(f"**DUE DATE:** {format_date(pd.to_datetime(row['DUE DATE'], errors='coerce'))}")
+#         st.write(f"**DUE DATE:** {format_date(row['DUE DATE'])}")
 #         st.write(f"**BILL NO:** {row['BILL NUMBER']}")
+
+#         # CALL DATES
+#         call_10 = row["CALLING AFTER +10 DAYS"]
+#         call_20 = row["CALLING AFTER +20 DAYS"]
+
+#         text_10 = format_date(call_10)
+#         text_20 = format_date(call_20)
+
+#         if pd.notna(call_10) and call_10 >= today:
+#             st.warning(f"📅 CALL AFTER +10 DAYS: {text_10}")
+#         else:
+#             st.write(f"📅 CALL AFTER +10 DAYS: {text_10}")
+
+#         if pd.notna(call_20) and call_20 >= today:
+#             st.warning(f"📅 CALL AFTER +20 DAYS: {text_20}")
+#         else:
+#             st.write(f"📅 CALL AFTER +20 DAYS: {text_20}")
 
 #     # -------------------------
 #     # REMARK INPUT
@@ -158,45 +164,36 @@
 #         remark = st.text_input("REMARK", key=f"remark_{i}")
 
 #     # -------------------------
-#     # BUTTON ACTION
+#     # ALWAYS SHOW BUTTON
 #     # -------------------------
 #     with col3:
+#         if st.button("CALL DONE", key=f"btn_{i}"):
 
-#         if row["BILL NUMBER"] in existing_bills or i in st.session_state.done_rows:
-#             st.success("✔ DONE")
-#         else:
-#             if st.button("CALL DONE", key=f"btn_{i}"):
+#             timestamp = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
-#                 if row["BILL NUMBER"] in existing_bills:
-#                     st.warning("Already stored!")
-#                 else:
-#                     timestamp = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+#             new_row = [
+#                 safe_value(row["PARTY NAME"]),
+#                 safe_value(row["AGENT NAME"]),
+#                 safe_value(row["OUTSTANDING AMOUNT"]),
+#                 format_date(row["DUE DATE"]),
+#                 safe_value(row["BILL NUMBER"]),
+#                 format_date(row["CALLING AFTER +10 DAYS"]),
+#                 format_date(row["CALLING AFTER +20 DAYS"]),
+#                 timestamp,
+#                 safe_value(remark)
+#             ]
 
-#                     new_row = [
-#                         safe_value(row["PARTY NAME"]),
-#                         safe_value(row["AGENT NAME"]),
-#                         safe_value(row["OUTSTANDING AMOUNT"]),
-#                         format_date(pd.to_datetime(row["DUE DATE"], errors='coerce')),
-#                         safe_value(row["BILL NUMBER"]),
-#                         format_date(row["CALLING AFTER +10 DAYS"]),
-#                         format_date(row["CALLING AFTER +20 DAYS"]),
-#                         timestamp,
-#                         safe_value(remark)
-#                     ]
+#             store.append_row(new_row)
 
-#                     store.append_row(new_row)
-
-#                     st.session_state.done_rows.add(i)
-#                     st.success("Stored Successfully ✅")
+#             st.success("Stored Successfully ✅")
 
 #     st.markdown("</div>", unsafe_allow_html=True)
-# #                     st.session_state.done_rows.add(i)
-# #                     st.success("Stored Successfully ✅")
-
-# #     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# //-------------------------------------------------##-----------------------------------------//
+
+
+
+# ---------------------//------------------------------//--------------------------
 
 import streamlit as st
 import pandas as pd
@@ -244,7 +241,7 @@ df = df[
 ]
 
 # -------------------------
-# DATE PARSING (IMPORTANT FIX)
+# DATE PARSING
 # -------------------------
 df["DUE DATE"] = pd.to_datetime(df["DUE DATE"], format="%d-%m-%Y", errors='coerce')
 df["CALLING AFTER +10 DAYS"] = pd.to_datetime(df["CALLING AFTER +10 DAYS"], format="%d-%m-%Y", errors='coerce')
@@ -268,55 +265,79 @@ def format_date(val):
     return str(val)
 
 # -------------------------
-# FILTER UI
+# UI TITLE
 # -------------------------
 st.title("📞 CALL TRACKING SYSTEM")
 
+# -------------------------
+# FILTER UI
+# -------------------------
 st.subheader("🔍 Filters")
 
-colf1, colf2, colf3 = st.columns(3)
+colf1, colf2, colf3, colf4 = st.columns(4)
 
 with colf1:
     party_filter = st.selectbox(
         "PARTY NAME",
-        [""] + sorted(df["PARTY NAME"].dropna().unique())
+        ["ALL"] + sorted(df["PARTY NAME"].dropna().unique())
     )
 
 with colf2:
     agent_filter = st.selectbox(
         "AGENT NAME",
-        [""] + sorted(df["AGENT NAME"].dropna().unique())
+        ["ALL"] + sorted(df["AGENT NAME"].dropna().unique())
     )
 
 with colf3:
     bill_filter = st.selectbox(
         "BILL NUMBER",
-        [""] + sorted(df["BILL NUMBER"].dropna().unique())
+        ["ALL"] + sorted(df["BILL NUMBER"].dropna().unique())
     )
 
-# Apply filters
-if party_filter:
+with colf4:
+    date_option = st.selectbox(
+        "CALL DATE FILTER",
+        ["ALL DATES", f"Today ({datetime.now().strftime('%d-%b-%Y')})", "Select Date"]
+    )
+
+    selected_date = None
+
+    if date_option == "Select Date":
+        selected_date = st.date_input("Choose Date")
+
+    elif "Today" in date_option:
+        selected_date = today
+
+# -------------------------
+# APPLY FILTERS
+# -------------------------
+if party_filter != "ALL":
     df = df[df["PARTY NAME"] == party_filter]
 
-if agent_filter:
+if agent_filter != "ALL":
     df = df[df["AGENT NAME"] == agent_filter]
 
-if bill_filter:
+if bill_filter != "ALL":
     df = df[df["BILL NUMBER"] == bill_filter]
+
+# DATE FILTER LOGIC
+if selected_date is not None:
+    selected_date = pd.to_datetime(selected_date)
+
+    df = df[
+        (df["CALLING AFTER +10 DAYS"] == selected_date) |
+        (df["CALLING AFTER +20 DAYS"] == selected_date)
+    ]
 
 # -------------------------
 # DISPLAY DATA
 # -------------------------
 for i, row in df.iterrows():
 
-    # -------------------------
-    # CONDITIONAL COLOR
-    # -------------------------
+    # Conditional color
     color = ""
-
     if pd.notna(row["CALLING AFTER +10 DAYS"]) and row["CALLING AFTER +10 DAYS"] >= today:
         color = "#f4c2c2"
-
     if pd.notna(row["CALLING AFTER +20 DAYS"]) and row["CALLING AFTER +20 DAYS"] >= today:
         color = "#f4c2c2"
 
@@ -327,9 +348,6 @@ for i, row in df.iterrows():
 
     col1, col2, col3 = st.columns([5, 3, 2])
 
-    # -------------------------
-    # DISPLAY INFO
-    # -------------------------
     with col1:
         st.write(f"**PARTY:** {row['PARTY NAME']}")
         st.write(f"**AGENT:** {row['AGENT NAME']}")
@@ -337,32 +355,12 @@ for i, row in df.iterrows():
         st.write(f"**DUE DATE:** {format_date(row['DUE DATE'])}")
         st.write(f"**BILL NO:** {row['BILL NUMBER']}")
 
-        # CALL DATES
-        call_10 = row["CALLING AFTER +10 DAYS"]
-        call_20 = row["CALLING AFTER +20 DAYS"]
+        st.write(f"📅 CALL AFTER +10 DAYS: {format_date(row['CALLING AFTER +10 DAYS'])}")
+        st.write(f"📅 CALL AFTER +20 DAYS: {format_date(row['CALLING AFTER +20 DAYS'])}")
 
-        text_10 = format_date(call_10)
-        text_20 = format_date(call_20)
-
-        if pd.notna(call_10) and call_10 >= today:
-            st.warning(f"📅 CALL AFTER +10 DAYS: {text_10}")
-        else:
-            st.write(f"📅 CALL AFTER +10 DAYS: {text_10}")
-
-        if pd.notna(call_20) and call_20 >= today:
-            st.warning(f"📅 CALL AFTER +20 DAYS: {text_20}")
-        else:
-            st.write(f"📅 CALL AFTER +20 DAYS: {text_20}")
-
-    # -------------------------
-    # REMARK INPUT
-    # -------------------------
     with col2:
         remark = st.text_input("REMARK", key=f"remark_{i}")
 
-    # -------------------------
-    # ALWAYS SHOW BUTTON
-    # -------------------------
     with col3:
         if st.button("CALL DONE", key=f"btn_{i}"):
 
