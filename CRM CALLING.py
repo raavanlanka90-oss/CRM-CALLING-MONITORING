@@ -1,3 +1,6 @@
+
+# # //-----------------------------------//------------------------------------//------------------
+
 # import streamlit as st
 # import pandas as pd
 # import gspread
@@ -36,7 +39,7 @@
 # df = pd.DataFrame(data)
 
 # # -------------------------
-# # FILTER (REMOVE BLANKS)
+# # FILTER VALID ROWS
 # # -------------------------
 # df = df[
 #     (df["DUE DATE"] != "") &
@@ -50,6 +53,21 @@
 # df["CALLING AFTER +20 DAYS"] = pd.to_datetime(df["CALLING AFTER +20 DAYS"], errors='coerce')
 
 # today = pd.to_datetime("today").normalize()
+
+# # -------------------------
+# # HELPER FUNCTIONS
+# # -------------------------
+# def safe_value(val):
+#     if pd.isna(val):
+#         return ""
+#     return str(val)
+
+# def format_date(val):
+#     if pd.isna(val):
+#         return ""
+#     if isinstance(val, pd.Timestamp):
+#         return val.strftime("%d-%b-%Y")   # dd-mmm-yyyy
+#     return str(val)
 
 # # -------------------------
 # # FILTER UI
@@ -95,13 +113,13 @@
 #     st.session_state.done_rows = set()
 
 # # -------------------------
-# # GET EXISTING STORE DATA (FOR DUPLICATE CHECK)
+# # EXISTING DATA (DUPLICATE CHECK)
 # # -------------------------
 # existing_data = store.get_all_values()
 # existing_bills = [row[4] for row in existing_data if len(row) > 4]
 
 # # -------------------------
-# # DISPLAY TABLE
+# # DISPLAY DATA
 # # -------------------------
 # for i, row in df.iterrows():
 
@@ -111,7 +129,7 @@
 #     color = ""
 
 #     if pd.notna(row["CALLING AFTER +10 DAYS"]) and row["CALLING AFTER +10 DAYS"] >= today:
-#         color = "#f4c2c2"
+#         color = "#f4c2c2"  # light magenta
 
 #     if pd.notna(row["CALLING AFTER +20 DAYS"]) and row["CALLING AFTER +20 DAYS"] >= today:
 #         color = "#f4c2c2"
@@ -124,26 +142,23 @@
 #     col1, col2, col3 = st.columns([5, 3, 2])
 
 #     # -------------------------
-#     # DATA DISPLAY
+#     # DISPLAY INFO
 #     # -------------------------
 #     with col1:
 #         st.write(f"**PARTY:** {row['PARTY NAME']}")
 #         st.write(f"**AGENT:** {row['AGENT NAME']}")
 #         st.write(f"**AMOUNT:** {row['OUTSTANDING AMOUNT']}")
-#         st.write(f"**DUE DATE:** {row['DUE DATE']}")
+#         st.write(f"**DUE DATE:** {format_date(pd.to_datetime(row['DUE DATE'], errors='coerce'))}")
 #         st.write(f"**BILL NO:** {row['BILL NUMBER']}")
 
 #     # -------------------------
 #     # REMARK INPUT
 #     # -------------------------
 #     with col2:
-#         remark = st.text_input(
-#             "REMARK",
-#             key=f"remark_{i}"
-#         )
+#         remark = st.text_input("REMARK", key=f"remark_{i}")
 
 #     # -------------------------
-#     # BUTTON
+#     # BUTTON ACTION
 #     # -------------------------
 #     with col3:
 
@@ -155,25 +170,33 @@
 #                 if row["BILL NUMBER"] in existing_bills:
 #                     st.warning("Already stored!")
 #                 else:
-#                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#                     timestamp = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
 #                     new_row = [
-#                         row["PARTY NAME"],          # A
-#                         row["AGENT NAME"],          # B
-#                         row["OUTSTANDING AMOUNT"],  # C
-#                         row["DUE DATE"],            # D
-#                         row["BILL NUMBER"],         # E
-#                         row["CALLING AFTER +10 DAYS"], # F
-#                         row["CALLING AFTER +20 DAYS"], # G
-#                         timestamp,                  # H
-#                         remark                      # I
+#                         safe_value(row["PARTY NAME"]),
+#                         safe_value(row["AGENT NAME"]),
+#                         safe_value(row["OUTSTANDING AMOUNT"]),
+#                         format_date(pd.to_datetime(row["DUE DATE"], errors='coerce')),
+#                         safe_value(row["BILL NUMBER"]),
+#                         format_date(row["CALLING AFTER +10 DAYS"]),
+#                         format_date(row["CALLING AFTER +20 DAYS"]),
+#                         timestamp,
+#                         safe_value(remark)
 #                     ]
 
 #                     store.append_row(new_row)
 
+#                     st.session_state.done_rows.add(i)
+#                     st.success("Stored Successfully ✅")
+
+#     st.markdown("</div>", unsafe_allow_html=True)
+# #                     st.session_state.done_rows.add(i)
+# #                     st.success("Stored Successfully ✅")
+
+# #     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# //-----------------------------------//------------------------------------//------------------
+# //-------------------------------------------------##-----------------------------------------//
 
 import streamlit as st
 import pandas as pd
@@ -240,7 +263,7 @@ def format_date(val):
     if pd.isna(val):
         return ""
     if isinstance(val, pd.Timestamp):
-        return val.strftime("%d-%b-%Y")   # dd-mmm-yyyy
+        return val.strftime("%d-%b-%Y")
     return str(val)
 
 # -------------------------
@@ -303,7 +326,7 @@ for i, row in df.iterrows():
     color = ""
 
     if pd.notna(row["CALLING AFTER +10 DAYS"]) and row["CALLING AFTER +10 DAYS"] >= today:
-        color = "#f4c2c2"  # light magenta
+        color = "#f4c2c2"
 
     if pd.notna(row["CALLING AFTER +20 DAYS"]) and row["CALLING AFTER +20 DAYS"] >= today:
         color = "#f4c2c2"
@@ -324,6 +347,23 @@ for i, row in df.iterrows():
         st.write(f"**AMOUNT:** {row['OUTSTANDING AMOUNT']}")
         st.write(f"**DUE DATE:** {format_date(pd.to_datetime(row['DUE DATE'], errors='coerce'))}")
         st.write(f"**BILL NO:** {row['BILL NUMBER']}")
+
+        # CALL DATES
+        call_10 = row["CALLING AFTER +10 DAYS"]
+        call_20 = row["CALLING AFTER +20 DAYS"]
+
+        text_10 = format_date(call_10)
+        text_20 = format_date(call_20)
+
+        if pd.notna(call_10) and call_10 >= today:
+            st.warning(f"📅 CALL AFTER +10 DAYS: {text_10}")
+        else:
+            st.write(f"📅 CALL AFTER +10 DAYS: {text_10}")
+
+        if pd.notna(call_20) and call_20 >= today:
+            st.warning(f"📅 CALL AFTER +20 DAYS: {text_20}")
+        else:
+            st.write(f"📅 CALL AFTER +20 DAYS: {text_20}")
 
     # -------------------------
     # REMARK INPUT
@@ -364,7 +404,4 @@ for i, row in df.iterrows():
                     st.success("Stored Successfully ✅")
 
     st.markdown("</div>", unsafe_allow_html=True)
-#                     st.session_state.done_rows.add(i)
-#                     st.success("Stored Successfully ✅")
 
-#     st.markdown("</div>", unsafe_allow_html=True)
